@@ -315,8 +315,8 @@ void Parkouring::InterpolateRefToPosition(RE::TESObjectREFR *obj, RE::NiPoint3 p
         return;
     }
 
-    // 1) Get the TESObjectREFR pointer you want to move:
-    RE::TESObjectREFR *movingRef = RE::PlayerCharacter::GetSingleton();  // example: move the player
+    // 1) Get the TESObjectREFR pointer
+    RE::TESObjectREFR *movingRef = RE::PlayerCharacter::GetSingleton();
 
     // 2) Wrap movingRef in a Papyrus handle
     auto policy = vm->GetObjectHandlePolicy();
