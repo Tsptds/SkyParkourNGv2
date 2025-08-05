@@ -1,4 +1,6 @@
 #include "References.h"
+#include "Hooks/Havok.hpp"
+
 #pragma once
 namespace Hooks {
 
@@ -130,7 +132,8 @@ bool Hooks::CameraHandler::TPP::Callback::CanProcess(RE::ThirdPersonState *a_thi
 void Hooks::CameraHandler::TPP::Callback::Update(RE::ThirdPersonState *a_this, RE::BSTSmartPointer<RE::TESCameraState> &a_nextState) {
     if (RuntimeVariables::ParkourInProgress) {
         /* Prevent Havok from pulling the player towards ground */
-        auto ctrl = GET_PLAYER->GetCharController();
+        const auto player = GET_PLAYER;
+        auto ctrl = player->GetCharController();
         ctrl->flags.reset(RE::CHARACTER_FLAGS::kSupport);
 
         /* TDM swim pitch angle thing */
@@ -142,6 +145,30 @@ void Hooks::CameraHandler::TPP::Callback::Update(RE::ThirdPersonState *a_this, R
             else if (pitch < -TDM_Pitch_Clamp) {
                 ctrl->pitchAngle = -TDM_Pitch_Clamp;
             }
+        }
+        const int idx = std::min(RuntimeVariables::ClipMoveIndex - 1, static_cast<int>(TriggerTimestamps.size()) - 1);
+        logger::info("Size:{} idx:{}", TriggerTimestamps.size(), idx);
+        if (RuntimeVariables::ParkourInProgress && !TriggerTimestamps.empty()) {
+            const auto startPos = RuntimeVariables::PlayerStartPosition;
+            const auto endPos = currentTargetPos;
+
+            // Time range for this segment
+            const float segmentStartTime = idx <= 0 ? 0 : TriggerTimestamps[idx - 1];
+            const float segmentEndTime = idx <= 0 ? 0 : TriggerTimestamps[idx];
+            const float deltaTime = segmentEndTime - segmentStartTime;
+
+            // Interpolation factor for current segment
+            float alpha = deltaTime == 0 ? 0 : AccumTime / deltaTime;  // normalized [0, 1]
+
+            // Clamp to [0, 1] just to be safe
+            alpha = std::clamp(alpha, 0.0f, 1.0f);
+
+            // Interpolate position
+            interpPos = Hooks::Havok::Lerp(startPos, endPos, alpha);
+
+            AccumTime += RE::GetSecondsSinceLastFrame();
+            logger::info("AccumTime: {}", AccumTime);
+            player->SetPosition(interpPos, true);
         }
     }
 
@@ -169,6 +196,31 @@ void Hooks::CameraHandler::FPP::Callback::Update(RE::FirstPersonState *a_this, R
         }
         else if (vertAngle < -Vertical_Clamp_Angle) {
             player->data.angle.x = -Vertical_Clamp_Angle;
+        }
+
+        const int idx = std::min(RuntimeVariables::ClipMoveIndex - 1, static_cast<int>(TriggerTimestamps.size()) - 1);
+        logger::info("Size:{} idx:{}", TriggerTimestamps.size(), idx);
+        if (RuntimeVariables::ParkourInProgress && !TriggerTimestamps.empty()) {
+            const auto startPos = RuntimeVariables::PlayerStartPosition;
+            const auto endPos = currentTargetPos;
+
+            // Time range for this segment
+            const float segmentStartTime = idx <= 0 ? 0 : TriggerTimestamps[idx - 1];
+            const float segmentEndTime = idx <= 0 ? 0 : TriggerTimestamps[idx];
+            const float deltaTime = segmentEndTime - segmentStartTime;
+
+            // Interpolation factor for current segment
+            float alpha = deltaTime == 0 ? 0 : AccumTime / deltaTime;  // normalized [0, 1]
+
+            // Clamp to [0, 1] just to be safe
+            alpha = std::clamp(alpha, 0.0f, 1.0f);
+
+            // Interpolate position
+            interpPos = Hooks::Havok::Lerp(startPos, endPos, alpha);
+
+            AccumTime += RE::GetSecondsSinceLastFrame();
+            logger::info("AccumTime: {}", AccumTime);
+            player->SetPosition(interpPos, true);
         }
     }
 

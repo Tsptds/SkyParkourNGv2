@@ -43,7 +43,8 @@
 namespace Hooks {
 
     float AccumTime = 0;
-
+    RE::NiPoint3 interpPos;
+    std::vector<float> TriggerTimestamps;
     class Havok {
         public:
             static bool InstallHooks();
@@ -54,8 +55,6 @@ namespace Hooks {
 
         private:
             struct ClipGenerator {
-                    inline static std::vector<float> TriggerTimestamps;
-
                     struct Install {
                             static bool Activate();
                             static bool Update();
@@ -165,33 +164,6 @@ namespace Hooks {
         }
     }
     void Havok::ClipGenerator::Callback::Update(RE::hkbClipGenerator* a_this, const RE::hkbContext& a_context, float a_timestep) {
-        const int idx = std::min(RuntimeVariables::ClipMoveIndex - 1, static_cast<int>(TriggerTimestamps.size()) - 1);
-        logger::info("Size:{} idx:{}", TriggerTimestamps.size(), idx);
-        if (RuntimeVariables::ParkourInProgress && !TriggerTimestamps.empty()) {
-            const auto startPos = RuntimeVariables::PlayerStartPosition;
-            const auto endPos = currentTargetPos;
-
-            // Time range for this segment
-            const float segmentStartTime = idx <= 0 ? 0 : TriggerTimestamps[idx - 1];
-            const float segmentEndTime = idx <= 0 ? 0 : TriggerTimestamps[idx];
-            const float deltaTime = segmentEndTime - segmentStartTime;
-
-            // Interpolation factor for current segment
-            float alpha = deltaTime == 0 ? 0 : AccumTime / deltaTime;  // normalized [0, 1]
-
-            // Clamp to [0, 1] just to be safe
-            alpha = std::clamp(alpha, 0.0f, 1.0f);
-
-            // Interpolate position
-            RE::NiPoint3 interpPos = Lerp(startPos, endPos, alpha);
-
-            // Apply
-            GET_PLAYER->GetCharController()->context.currentState = RE::hkpCharacterStateType::kInAir;
-            GET_PLAYER->SetPosition(interpPos, true);
-            logger::info("{} {} {}", interpPos.x, interpPos.y, interpPos.z);
-            AccumTime += a_timestep;
-        }
-
         OG::_Update(a_this, a_context, a_timestep);
     }
     void Havok::ClipGenerator::Callback::Deactivate(RE::hkbClipGenerator* a_this, const RE::hkbContext& a_context) {
