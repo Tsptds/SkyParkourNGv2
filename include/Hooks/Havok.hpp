@@ -1,5 +1,5 @@
 ﻿#pragma once
-
+#include "References.h"
 //namespace Hooks {
 //    /* H */
 //    using namespace RE;
@@ -41,9 +41,16 @@
 //}  // namespace Hooks
 
 namespace Hooks {
+
+    float AccumTime = 0;
+
     class Havok {
         public:
             static bool InstallHooks();
+
+            inline static RE::NiPoint3 Lerp(const RE::NiPoint3& a, const RE::NiPoint3& b, float alpha) {
+                return a + (b - a) * alpha;
+            }
 
         private:
             struct ClipGenerator {
@@ -116,6 +123,10 @@ namespace Hooks {
             return;
         }
 
+        if (!RuntimeVariables::IsParkourActive) {
+            return;
+        }
+
         auto clipName = a_this->animationName.c_str();
         logger::info("***{}", clipName);
 
@@ -154,6 +165,33 @@ namespace Hooks {
         }
     }
     void Havok::ClipGenerator::Callback::Update(RE::hkbClipGenerator* a_this, const RE::hkbContext& a_context, float a_timestep) {
+        const int idx = std::min(RuntimeVariables::ClipMoveIndex - 1, static_cast<int>(TriggerTimestamps.size()) - 1);
+        logger::info("Size:{} idx:{}", TriggerTimestamps.size(), idx);
+        if (RuntimeVariables::ParkourInProgress && !TriggerTimestamps.empty()) {
+            const auto startPos = RuntimeVariables::PlayerStartPosition;
+            const auto endPos = currentTargetPos;
+
+            // Time range for this segment
+            const float segmentStartTime = idx <= 0 ? 0 : TriggerTimestamps[idx - 1];
+            const float segmentEndTime = idx <= 0 ? 0 : TriggerTimestamps[idx];
+            const float deltaTime = segmentEndTime - segmentStartTime;
+
+            // Interpolation factor for current segment
+            float alpha = deltaTime == 0 ? 0 : AccumTime / deltaTime;  // normalized [0, 1]
+
+            // Clamp to [0, 1] just to be safe
+            alpha = std::clamp(alpha, 0.0f, 1.0f);
+
+            // Interpolate position
+            RE::NiPoint3 interpPos = Lerp(startPos, endPos, alpha);
+
+            // Apply
+            GET_PLAYER->GetCharController()->context.currentState = RE::hkpCharacterStateType::kInAir;
+            GET_PLAYER->SetPosition(interpPos, true);
+            logger::info("{} {} {}", interpPos.x, interpPos.y, interpPos.z);
+            AccumTime += a_timestep;
+        }
+
         OG::_Update(a_this, a_context, a_timestep);
     }
     void Havok::ClipGenerator::Callback::Deactivate(RE::hkbClipGenerator* a_this, const RE::hkbContext& a_context) {
@@ -163,6 +201,8 @@ namespace Hooks {
             }
 
             TriggerTimestamps.clear();
+            RuntimeVariables::ClipMoveIndex = 0;
+            AccumTime = 0;
             logger::info("Cleaned up motion array");
         }
         OG::_Deactivate(a_this, a_context);

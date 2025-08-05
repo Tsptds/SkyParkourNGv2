@@ -105,6 +105,7 @@ namespace RuntimeVariables {
     extern RE::NiPoint3 playerDirFlat;
 
     extern RE::NiPoint3 PlayerStartPosition;
+    extern int ClipMoveIndex;
 
     extern bool ParkourInProgress;
     extern bool EnableNotifyWindow;

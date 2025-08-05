@@ -7,7 +7,7 @@ namespace Parkouring {
                    float maxVaultHeight);
     void OnStartStop(bool isStop);
     bool PlaceAndShowIndicator();
-    void InterpolateRefToPosition(const RE::Actor *movingRef, RE::NiPoint3 position, float seconds, bool isRelative = false);
+    RE::NiPoint3 InterpolateRefToPosition(const RE::Actor *movingRef, RE::NiPoint3 position, float seconds, bool isRelative = false);
     void StopInterpolatingRef(const RE::Actor *actor);
     void CalculateStartingPosition(int ledgeType);
 

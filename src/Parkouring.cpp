@@ -362,12 +362,7 @@ bool Parkouring::PlaceAndShowIndicator() {
     return true;
 }
 
-void Parkouring::InterpolateRefToPosition(const RE::Actor *movingRef, RE::NiPoint3 position, float seconds, bool isRelative) {
-    auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-    if (!vm) {
-        return;
-    }
-
+RE::NiPoint3 Parkouring::InterpolateRefToPosition(const RE::Actor *movingRef, RE::NiPoint3 position, float, bool isRelative) {
     /* Calculate speed from cur pos to target dist / time. BUT Read annotations relative to start position. */
     auto curPos = movingRef->GetPosition();
     RE::NiPoint3 relativeTranslatedToWorld = position;
@@ -389,60 +384,17 @@ void Parkouring::InterpolateRefToPosition(const RE::Actor *movingRef, RE::NiPoin
         relativeTranslatedToWorld = RE::NiPoint3{worldX, worldY, worldZ};
     }
 
-    const auto diff = relativeTranslatedToWorld - curPos;
+    return relativeTranslatedToWorld;
+    //const auto diff = relativeTranslatedToWorld - curPos;
 
-    float mult;
-    movingRef->GetGraphVariableFloat(SPPF_SPEEDMULT, mult);
-    if (mult == 0.0f) {
-        mult = 1.0f;
-    }
+    //float mult;
+    //movingRef->GetGraphVariableFloat(SPPF_SPEEDMULT, mult);
+    //if (mult == 0.0f) {
+    //    mult = 1.0f;
+    //}
 
-    auto speed = seconds <= 0 ? 5000 : diff.Length() / seconds;  // Snap to pos if 0 or negative seconds
-    speed *= mult;
-
-    // Wrap movingRef in a Papyrus handle
-    auto policy = vm->GetObjectHandlePolicy();
-    RE::VMHandle handle = policy->GetHandleForObject(movingRef->GetFormType(), movingRef);
-    if (handle == policy->EmptyHandle()) {
-        return;
-    }
-
-    // Lookup the Papyrus-bound "ObjectReference" instance
-    RE::BSFixedString scriptName = "ObjectReference";
-    RE::BSFixedString functionName =
-        "TranslateTo";  // For SplineTranslateTo, add std::move(float) between rz and speed. Does an overshoot, and pullback. Sometimes too strong.
-
-    RE::BSTSmartPointer<RE::BSScript::Object> object;
-    if (!vm->FindBoundObject(handle, scriptName.c_str(), object)) {
-        return;
-    }
-
-    float px = relativeTranslatedToWorld.x;
-    float py = relativeTranslatedToWorld.y;
-    float pz = relativeTranslatedToWorld.z;
-    float rx = movingRef->data.angle.x;
-    float ry = movingRef->data.angle.y;
-    float rz = movingRef->data.angle.z;
-    float maxRotSpeed = 0.0f;
-
-    // Build the IFunctionArguments with those locals:
-    auto args = RE::MakeFunctionArguments(std::move(px),  // afX
-                                          std::move(py),  // afY
-                                          std::move(pz),  // afZ
-                                          std::move(rx),  // afRX
-                                          std::move(ry),  // afRY
-                                          std::move(rz),  // afRZ
-                                          //std::move(100.0f),
-                                          std::move(speed), std::move(maxRotSpeed));
-
-    StopInterpolatingRef(movingRef);
-
-    // Call the Papyrus method
-    RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> result;
-    vm->DispatchMethodCall1(object,        // the Papyrus ObjectReference instance
-                            functionName,  // "TranslateTo"
-                            args,          // packed arguments
-                            result);
+    //auto speed = seconds <= 0 ? 5000 : diff.Length() / seconds;  // Snap to pos if 0 or negative seconds
+    //speed *= mult;
 }
 void Parkouring::StopInterpolatingRef(const RE::Actor *actor) {
     auto movingRef = actor;

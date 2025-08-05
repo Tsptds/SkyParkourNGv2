@@ -3,7 +3,7 @@
 #include "Util/ParkourUtility.h"
 
 namespace Hooks {
-
+    RE::NiPoint3 currentTargetPos;
     template <class T>
     class AnimationEventHook : public T {
         public:
@@ -36,11 +36,13 @@ namespace Hooks {
                             const ParsedPayload parsed = ParsePayload(a_event->payload.c_str());
 
                             constexpr bool isRelative = true;
-                            Parkouring::InterpolateRefToPosition(player, parsed.position, parsed.sec, isRelative);
+                            currentTargetPos = Parkouring::InterpolateRefToPosition(player, parsed.position, parsed.sec, isRelative);
                         }
+                        RuntimeVariables::ClipMoveIndex += 1;
                     }
                     if (a_event->tag == SPPF_START) {
                         Parkouring::OnStartStop(IS_START);
+                        RuntimeVariables::ClipMoveIndex = 0;
                     }
                     if (a_event->tag == SPPF_RECOVERY) {
                         RuntimeVariables::RecoveryFramesActive = true;
