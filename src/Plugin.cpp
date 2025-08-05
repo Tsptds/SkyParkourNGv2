@@ -7,6 +7,7 @@
 #include "Hooks/InputHandler.hpp"
 #include "Hooks/AnimEventHandler.hpp"
 #include "Hooks/CameraHandler.hpp"
+#include "Hooks/Havok.hpp"
 
 bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
     SkyParkour_Papyrus::Internal::RegisterPapyrusFuncsToVM(vm);
@@ -34,6 +35,7 @@ void Install_Hooks_And_Listeners() {
     Hooks::NotifyGraphHandler::InstallGraphNotifyHook();
 
     Hooks::CameraHandler::InstallCamStateHooks();
+    Hooks::Havok::InstallHooks();
 }
 
 bool RegisterIndicators() {
